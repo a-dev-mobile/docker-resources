@@ -40,81 +40,102 @@ def format_text_output(server_infos, output_file=None):
                 "N/A", "N/A", "N/A", "N/A", "N/A", "N/A", "N/A"
             ])
     
-    # Detailed information about each server
-    detailed_info = ""
+    # 1. GENERAL SUMMARY
+    output = "\n" + "=" * 80 + "\n"
+    output += "SERVER SUMMARY\n"
+    output += "=" * 80 + "\n"
+    output += str(table) + "\n"
+    
+    # 2. DETAILED SERVER INFORMATION
+    output += "\n" + "=" * 80 + "\n"
+    output += "DETAILED SERVER INFORMATION\n"
+    output += "=" * 80 + "\n"
+    
     for info in server_infos:
         if not info.is_available:
-            detailed_info += f"\n\n### Server: {info.hostname} - UNAVAILABLE ###\n"
-            detailed_info += f"Error: {info.error_message}\n"
+            output += f"\n\n### Server: {info.hostname} - UNAVAILABLE ###\n"
+            output += f"Error: {info.error_message}\n"
             continue
             
-        detailed_info += f"\n\n### Server: {info.hostname} ###\n"
+        output += f"\n\n### Server: {info.hostname} ###\n"
         
         # System information
         sys_info = info.info.get('system_info', {})
-        detailed_info += "\n--- System Information ---\n"
-        detailed_info += f"OS: {sys_info.get('os', 'N/A')}\n"
-        detailed_info += f"Kernel: {sys_info.get('kernel', 'N/A')}\n"
-        detailed_info += f"Uptime: {sys_info.get('uptime', 'N/A')}\n"
+        output += "\n--- System Information ---\n"
+        output += f"OS: {sys_info.get('os', 'N/A')}\n"
+        output += f"Kernel: {sys_info.get('kernel', 'N/A')}\n"
+        output += f"Uptime: {sys_info.get('uptime', 'N/A')}\n"
         
         # Resource information
         resources = info.info.get('resources', {})
-        detailed_info += "\n--- Resources ---\n"
+        output += "\n--- Resources ---\n"
         
         # CPU information with load average
-        detailed_info += f"CPU current load: {resources.get('cpu_usage_current', 'N/A')}%\n"
+        output += f"CPU current load: {resources.get('cpu_usage_current', 'N/A')}%\n"
         
         cpu_load = resources.get('cpu_load', {})
         if cpu_load:
-            detailed_info += "Load Average:\n"
-            detailed_info += f"  1 min: {cpu_load.get('load_1m', 'N/A')}\n"
-            detailed_info += f"  5 min: {cpu_load.get('load_5m', 'N/A')}\n"
-            detailed_info += f" 15 min: {cpu_load.get('load_15m', 'N/A')}\n"
+            output += "Load Average:\n"
+            output += f"  1 min: {cpu_load.get('load_1m', 'N/A')}\n"
+            output += f"  5 min: {cpu_load.get('load_5m', 'N/A')}\n"
+            output += f" 15 min: {cpu_load.get('load_15m', 'N/A')}\n"
         
         cpu_load_relative = resources.get('cpu_load_relative', {})
         if cpu_load_relative:
-            detailed_info += "Relative CPU load (% of available cores):\n"
-            detailed_info += f"  1 min: {cpu_load_relative.get('load_1m_percent', 'N/A')}%\n"
-            detailed_info += f"  5 min: {cpu_load_relative.get('load_5m_percent', 'N/A')}%\n"
-            detailed_info += f" 15 min: {cpu_load_relative.get('load_15m_percent', 'N/A')}%\n"
+            output += "Relative CPU load (% of available cores):\n"
+            output += f"  1 min: {cpu_load_relative.get('load_1m_percent', 'N/A')}%\n"
+            output += f"  5 min: {cpu_load_relative.get('load_5m_percent', 'N/A')}%\n"
+            output += f" 15 min: {cpu_load_relative.get('load_15m_percent', 'N/A')}%\n"
             
-        detailed_info += f"Number of cores: {resources.get('cpu_cores', 'N/A')}\n"
+        output += f"Number of cores: {resources.get('cpu_cores', 'N/A')}\n"
         
         memory = resources.get('memory', {})
         if memory:
-            detailed_info += "Memory:\n"
-            detailed_info += f"  Total: {info.format_bytes(memory.get('total', 0))}\n"
-            detailed_info += f"  Used: {info.format_bytes(memory.get('used', 0))} ({memory.get('usage_percent', 'N/A')}%)\n"
-            detailed_info += f"  Free: {info.format_bytes(memory.get('free', 0))}\n"
+            output += "Memory:\n"
+            output += f"  Total: {info.format_bytes(memory.get('total', 0))}\n"
+            output += f"  Used: {info.format_bytes(memory.get('used', 0))} ({memory.get('usage_percent', 'N/A')}%)\n"
+            output += f"  Free: {info.format_bytes(memory.get('free', 0))}\n"
         
         disk = resources.get('disk', {})
         if disk:
-            detailed_info += "Disk (/):\n"
-            detailed_info += f"  Total: {info.format_bytes(disk.get('total', 0))}\n"
-            detailed_info += f"  Used: {info.format_bytes(disk.get('used', 0))} ({disk.get('usage_percent', 'N/A')}%)\n"
-            detailed_info += f"  Free: {info.format_bytes(disk.get('free', 0))}\n"
+            output += "Disk (/):\n"
+            output += f"  Total: {info.format_bytes(disk.get('total', 0))}\n"
+            output += f"  Used: {info.format_bytes(disk.get('used', 0))} ({disk.get('usage_percent', 'N/A')}%)\n"
+            output += f"  Free: {info.format_bytes(disk.get('free', 0))}\n"
         
-        # Docker information
+        # Docker information (basic)
         docker = info.info.get('docker', {})
         if not docker.get('installed', False):
-            detailed_info += "\n--- Docker ---\n"
-            detailed_info += "Docker is not installed\n"
+            output += "\n--- Docker ---\n"
+            output += "Docker is not installed\n"
             continue
             
-        detailed_info += "\n--- Docker ---\n"
-        detailed_info += f"Version: {docker.get('version', 'N/A')}\n"
+        output += "\n--- Docker ---\n"
+        output += f"Version: {docker.get('version', 'N/A')}\n"
         
         docker_info = docker.get('info', {})
-        detailed_info += f"Running containers: {docker_info.get('containers_running', 'N/A')}\n"
-        detailed_info += f"Total containers: {docker_info.get('containers_total', 'N/A')}\n"
-        detailed_info += f"Images: {docker_info.get('images', 'N/A')}\n"
-        detailed_info += f"Storage Driver: {docker_info.get('storage_driver', 'N/A')}\n"
-        detailed_info += f"Cgroup Driver: {docker_info.get('cgroup_driver', 'N/A')}\n"
+        output += f"Running containers: {docker_info.get('containers_running', 'N/A')}\n"
+        output += f"Total containers: {docker_info.get('containers_total', 'N/A')}\n"
+        output += f"Images: {docker_info.get('images', 'N/A')}\n"
+        output += f"Storage Driver: {docker_info.get('storage_driver', 'N/A')}\n"
+        output += f"Cgroup Driver: {docker_info.get('cgroup_driver', 'N/A')}\n"
+    
+    # 3. RUNNING CONTAINERS SECTION
+    output += "\n" + "=" * 80 + "\n"
+    output += "RUNNING CONTAINERS\n"
+    output += "=" * 80 + "\n"
+    
+    for info in server_infos:
+        if not info.is_available:
+            continue
         
-        # List of running containers
+        docker = info.info.get('docker', {})
+        if not docker.get('installed', False):
+            continue
+            
         containers = docker.get('containers', {}).get('running', [])
         if containers:
-            detailed_info += "\n--- Running Containers ---\n"
+            output += f"\n\n### Server: {info.hostname} ###\n"
             
             # Create table for containers
             container_table = PrettyTable()
@@ -133,12 +154,27 @@ def format_text_output(server_infos, output_file=None):
                 
                 container_table.add_row([name, image, status, cpu_percent, mem_usage])
             
-            detailed_info += str(container_table) + "\n"
+            output += str(container_table) + "\n"
+        else:
+            output += f"\n\n### Server: {info.hostname} ###\n"
+            output += "No running containers\n"
+
+    # 4. DOCKER IMAGES SECTION
+    output += "\n" + "=" * 80 + "\n"
+    output += "DOCKER IMAGES\n"
+    output += "=" * 80 + "\n"
+    
+    for info in server_infos:
+        if not info.is_available:
+            continue
         
-        # List of images
+        docker = info.info.get('docker', {})
+        if not docker.get('installed', False):
+            continue
+            
         images = docker.get('images', [])
         if images:
-            detailed_info += "\n--- Docker Images ---\n"
+            output += f"\n\n### Server: {info.hostname} ###\n"
             
             # Create table for images
             image_table = PrettyTable()
@@ -155,32 +191,21 @@ def format_text_output(server_infos, output_file=None):
                 
                 image_table.add_row([repo, tag, image_id, size])
             
-            detailed_info += str(image_table) + "\n"
+            output += str(image_table) + "\n"
             
             if len(images) > 10:
-                detailed_info += f"...and {len(images) - 10} more images...\n"
+                output += f"...and {len(images) - 10} more images...\n"
+        else:
+            output += f"\n\n### Server: {info.hostname} ###\n"
+            output += "No Docker images\n"
     
-    # Output results
-    print("\n" + "=" * 80)
-    print("SERVER SUMMARY")
-    print("=" * 80)
-    print(table)
-    
-    print("\n" + "=" * 80)
-    print("DETAILED SERVER INFORMATION")
-    print("=" * 80)
-    print(detailed_info)
+    # Print and save results
+    print(output)
     
     # Write to file, if specified
     if output_file:
         with open(output_file, 'w') as f:
-            f.write("SERVER SUMMARY\n")
-            f.write("=" * 80 + "\n")
-            f.write(str(table) + "\n\n")
-            
-            f.write("DETAILED SERVER INFORMATION\n")
-            f.write("=" * 80 + "\n")
-            f.write(detailed_info)
+            f.write(output)
             
         print(f"\nResults saved to file: {output_file}")
 
