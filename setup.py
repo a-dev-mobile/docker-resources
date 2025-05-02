@@ -6,7 +6,7 @@ from setuptools import setup, find_packages
 setup(
     name="docker-resources",
     version="1.0.0",
-    description="Инструмент для проверки ресурсов Docker на удаленных серверах",
+    description="Tool for checking Docker resources on remote servers",
     author="",
     packages=find_packages(),
     install_requires=[

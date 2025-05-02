@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Скрипт для сбора информации о ресурсах Docker на удаленных серверах.
+Script for collecting Docker resource information on remote servers.
 """
 
 import os
@@ -15,19 +15,19 @@ from concurrent.futures import ThreadPoolExecutor
 from server_info import ServerInfo
 from formatters import format_output
 
-# Настройки по умолчанию
+# Default settings
 DEFAULT_SERVERS_FILE = "servers.txt"
 DEFAULT_OUTPUT_FORMAT = "text"
-DEFAULT_TIMEOUT = 5  # Таймаут подключения к серверу в секундах
-MAX_WORKERS = 10  # Максимальное количество параллельных подключений
+DEFAULT_TIMEOUT = 5  # Server connection timeout in seconds
+MAX_WORKERS = 10  # Maximum number of parallel connections
 
 def read_servers_file(file_path):
-    """Чтение файла со списком серверов."""
+    """Read file with server list."""
     servers = []
     
     if not os.path.exists(file_path):
-        print(f"Ошибка: Файл {file_path} не найден.")
-        print("Создайте файл в формате: user@hostname или hostname (по одному на строку)")
+        print(f"Error: File {file_path} not found.")
+        print("Create a file in the format: user@hostname or hostname (one per line)")
         sys.exit(1)
     
     with open(file_path, 'r') as f:
@@ -39,33 +39,33 @@ def read_servers_file(file_path):
     return servers
 
 def process_server(server_address, key_file=None):
-    """Обработка одного сервера."""
-    print(f"Проверка сервера: {server_address}...")
+    """Process one server."""
+    print(f"Checking server: {server_address}...")
     server_info = ServerInfo(server_address, key_file=key_file)
     success = server_info.collect_all_info()
     
     if success:
-        print(f"Сбор информации для {server_address} завершен успешно.")
+        print(f"Information collection for {server_address} completed successfully.")
     else:
-        print(f"Ошибка при сборе информации для {server_address}: {server_info.error_message}")
+        print(f"Error while collecting information for {server_address}: {server_info.error_message}")
         
     return server_info
 
 def main():
-    """Основная функция."""
-    parser = argparse.ArgumentParser(description='Скрипт для проверки ресурсов Docker на серверах.')
-    parser.add_argument('-f', '--file', help='Файл со списком серверов', default=DEFAULT_SERVERS_FILE)
-    parser.add_argument('-o', '--output', help='Файл для записи результатов')
-    parser.add_argument('-k', '--key', help='Файл приватного ключа для SSH')
+    """Main function."""
+    parser = argparse.ArgumentParser(description='Script for checking Docker resources on servers.')
+    parser.add_argument('-f', '--file', help='File with server list', default=DEFAULT_SERVERS_FILE)
+    parser.add_argument('-o', '--output', help='File to write results')
+    parser.add_argument('-k', '--key', help='SSH private key file')
     parser.add_argument('--format', choices=['text', 'json', 'csv'], default=DEFAULT_OUTPUT_FORMAT,
-                        help='Формат вывода результатов')
+                        help='Results output format')
     args = parser.parse_args()
     
-    # Чтение списка серверов
+    # Read server list
     servers = read_servers_file(args.file)
-    print(f"Найдено {len(servers)} серверов для проверки.")
+    print(f"Found {len(servers)} servers to check.")
     
-    # Используем ThreadPoolExecutor для параллельной обработки серверов
+    # Use ThreadPoolExecutor for parallel server processing
     server_infos = []
     
     with ThreadPoolExecutor(max_workers=min(MAX_WORKERS, len(servers))) as executor:
@@ -79,9 +79,9 @@ def main():
                 server_info = future.result()
                 server_infos.append(server_info)
             except Exception as e:
-                print(f"Ошибка при обработке сервера {futures[future]}: {str(e)}")
+                print(f"Error processing server {futures[future]}: {str(e)}")
     
-    # Форматирование и вывод результатов
+    # Format and output results
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     output_file = args.output or f"docker_resources_{timestamp}.{args.format}"
     

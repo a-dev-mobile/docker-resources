@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Модуль для сбора информации о серверах через SSH.
+Module for collecting information about servers via SSH.
 """
 
 import os
@@ -11,17 +11,17 @@ import socket
 import paramiko
 
 class ServerInfo:
-    """Класс для сбора и хранения информации о сервере."""
+    """Class for collecting and storing server information."""
     
     def __init__(self, hostname, username=None, port=22, key_file=None, password=None):
-        """Инициализация с параметрами подключения."""
-        # Обработка формата user@hostname:port
+        """Initialization with connection parameters."""
+        # Process user@hostname:port format
         if '@' in hostname:
             parts = hostname.split('@')
             username_part = parts[0]
             host_part = parts[1]
             
-            # Проверка наличия порта
+            # Check for port
             if ':' in host_part:
                 host_parts = host_part.split(':')
                 self.hostname = host_parts[0]
@@ -32,7 +32,7 @@ class ServerInfo:
                 
             self.username = username_part
         else:
-            # Проверка наличия порта без имени пользователя
+            # Check for port without username
             if ':' in hostname:
                 host_parts = hostname.split(':')
                 self.hostname = host_parts[0]
@@ -65,7 +65,7 @@ class ServerInfo:
         }
         
     def connect(self):
-        """Установка SSH-соединения с сервером."""
+        """Establish SSH connection to the server."""
         try:
             self.client = paramiko.SSHClient()
             self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -90,79 +90,79 @@ class ServerInfo:
             self.is_available = True
             return True
         except socket.timeout:
-            self.error_message = "Таймаут подключения"
+            self.error_message = "Connection timeout"
             return False
         except paramiko.AuthenticationException:
-            self.error_message = "Ошибка аутентификации"
+            self.error_message = "Authentication error"
             return False
         except paramiko.SSHException as e:
-            self.error_message = f"Ошибка SSH: {str(e)}"
+            self.error_message = f"SSH error: {str(e)}"
             return False
         except Exception as e:
-            self.error_message = f"Ошибка подключения: {str(e)}"
+            self.error_message = f"Connection error: {str(e)}"
             return False
     
     def disconnect(self):
-        """Закрытие SSH-соединения."""
+        """Close SSH connection."""
         if hasattr(self, 'client'):
             self.client.close()
     
     def execute_command(self, command):
-        """Выполнение команды на сервере и возврат результата."""
+        """Execute command on server and return result."""
         if not self.is_available:
-            return None, f"Сервер недоступен: {self.error_message}"
+            return None, f"Server unavailable: {self.error_message}"
             
         try:
             stdin, stdout, stderr = self.client.exec_command(command, timeout=5)
-            exit_status = stdout.channel.recv_exit_status()  # Дожидаемся завершения команды
+            exit_status = stdout.channel.recv_exit_status()  # Wait for command completion
             
             output = stdout.read().decode('utf-8', errors='replace').strip()
             error = stderr.read().decode('utf-8', errors='replace').strip()
             
             if exit_status != 0:
                 if error:
-                    return None, f"Команда завершилась с ошибкой (код {exit_status}): {error}"
+                    return None, f"Command completed with error (code {exit_status}): {error}"
                 else:
-                    return None, f"Команда завершилась с ошибкой (код {exit_status})"
+                    return None, f"Command completed with error (code {exit_status})"
             
             if error and not output:
                 return None, error
             
             return output, error
         except Exception as e:
-            return None, f"Ошибка выполнения команды '{command}': {str(e)}"
+            return None, f"Error executing command '{command}': {str(e)}"
     
     def collect_system_info(self):
-        """Сбор общей информации о системе."""
+        """Collect general system information."""
         if not self.is_available:
             return
             
-        # Получение имени хоста
+        # Get hostname
         output, _ = self.execute_command("hostname")
         if output:
             self.info['system_info']['hostname'] = output
             
-        # Получение информации об ОС
+        # Get OS information
         output, _ = self.execute_command("cat /etc/os-release | grep PRETTY_NAME | cut -d '\"' -f 2")
         if output:
             self.info['system_info']['os'] = output
             
-        # Получение версии ядра
+        # Get kernel version
         output, _ = self.execute_command("uname -r")
         if output:
             self.info['system_info']['kernel'] = output
             
-        # Получение времени работы системы
+        # Get system uptime
         output, _ = self.execute_command("uptime -p")
         if output:
             self.info['system_info']['uptime'] = output
     
     def collect_resource_info(self):
-        """Сбор информации о ресурсах."""
+        """Collect resource information."""
         if not self.is_available:
             return
             
-        # Более точная информация о CPU - средняя нагрузка за 1, 5 и 15 минут
+        # More accurate CPU information - average load for 1, 5, and 15 minutes
         output, _ = self.execute_command("cat /proc/loadavg")
         if output:
             parts = output.split()
@@ -173,21 +173,21 @@ class ServerInfo:
                     'load_15m': float(parts[2])
                 }
             
-        # Текущая загрузка CPU (моментальный снимок)
+        # Current CPU usage (instant snapshot)
         output, _ = self.execute_command("top -bn1 | grep 'Cpu(s)'")
         if output:
-            # Парсим вывод top для получения загрузки CPU
+            # Parse top output for CPU usage
             parts = output.split(',')
             user_cpu = float(parts[0].split()[1])
             system_cpu = float(parts[1].split()[0])
             self.info['resources']['cpu_usage_current'] = round(user_cpu + system_cpu, 2)
             
-        # Количество ядер CPU
+        # Number of CPU cores
         output, _ = self.execute_command("nproc")
         if output:
             self.info['resources']['cpu_cores'] = int(output)
             
-            # Расчет относительной нагрузки (load average / количество ядер)
+            # Calculate relative load (load average / number of cores)
             if 'cpu_load' in self.info['resources']:
                 cores = self.info['resources']['cpu_cores']
                 self.info['resources']['cpu_load_relative'] = {
@@ -196,7 +196,7 @@ class ServerInfo:
                     'load_15m_percent': round((self.info['resources']['cpu_load']['load_15m'] / cores) * 100, 2)
                 }
             
-        # Информация о памяти
+        # Memory information
         output, _ = self.execute_command("free -b")
         if output:
             lines = output.strip().split('\n')
@@ -212,7 +212,7 @@ class ServerInfo:
                         'usage_percent': round((used_mem / total_mem) * 100, 2)
                     }
         
-        # Информация о диске
+        # Disk information
         output, _ = self.execute_command("df -B1 / | tail -1")
         if output:
             parts = output.split()
@@ -228,11 +228,11 @@ class ServerInfo:
                 }
     
     def collect_docker_info(self):
-        """Сбор информации о Docker и контейнерах."""
+        """Collect information about Docker and containers."""
         if not self.is_available:
             return
             
-        # Проверка наличия Docker
+        # Check if Docker is installed
         output, _ = self.execute_command("command -v docker")
         if not output:
             self.info['docker']['installed'] = False
@@ -240,12 +240,12 @@ class ServerInfo:
             
         self.info['docker']['installed'] = True
         
-        # Получение версии Docker
+        # Get Docker version
         output, _ = self.execute_command("docker --version")
         if output:
             self.info['docker']['version'] = output
             
-        # Получение информации о Docker демоне
+        # Get Docker daemon information
         output, _ = self.execute_command("docker info --format '{{json .}}'")
         if output:
             try:
@@ -258,33 +258,33 @@ class ServerInfo:
                     'cgroup_driver': docker_info.get('CgroupDriver', '')
                 }
             except json.JSONDecodeError as e:
-                print(f"Ошибка при парсинге JSON информации о Docker на {self.hostname}: {str(e)}")
-                # Установка значений по умолчанию
+                print(f"Error while parsing Docker JSON information on {self.hostname}: {str(e)}")
+                # Set default values
                 self.info['docker']['info'] = {
                     'containers_running': 0,
                     'containers_total': 0,
                     'images': 0,
-                    'storage_driver': 'неизвестно',
-                    'cgroup_driver': 'неизвестно'
+                    'storage_driver': 'unknown',
+                    'cgroup_driver': 'unknown'
                 }
         
-        # Проверка наличия jq для парсинга JSON
+        # Check for jq for JSON parsing
         has_jq, _ = self.execute_command("command -v jq")
         
-        # Получение списка запущенных контейнеров с использованием ресурсов
+        # Get list of running containers with resources
         if has_jq:
             output, _ = self.execute_command("""
                 docker ps --format '{{json .}}' | jq -s '.'
             """)
         else:
-            # Альтернативный метод без jq
+            # Alternative method without jq
             output, _ = self.execute_command("""
                 echo "["
                 docker ps --format '{{json .}}' | sed -e 's/$/,/'
                 echo "{}"
                 echo "]"
             """)
-            # Исправление JSON-формата (убираем лишнюю запятую)
+            # Fix JSON format (remove extra comma)
             if output:
                 output = output.replace(",\n{}\n]", "\n]")
         
@@ -293,7 +293,7 @@ class ServerInfo:
                 containers = json.loads(output)
                 for container in containers:
                     container_name = container.get('Names', '')
-                    # Получение использования ресурсов для контейнера
+                    # Get resource usage for container
                     stats_output, _ = self.execute_command(f"""
                         docker stats {container_name} --no-stream --format '{{{{json .}}}}'
                     """)
@@ -305,7 +305,7 @@ class ServerInfo:
                         except json.JSONDecodeError:
                             container['stats'] = {}
                     
-                    # Получение лимитов ресурсов для контейнера
+                    # Get resource limits for container
                     inspect_output, _ = self.execute_command(f"""
                         docker inspect {container_name} --format '{{{{json .HostConfig}}}}'
                     """)
@@ -324,20 +324,20 @@ class ServerInfo:
             except json.JSONDecodeError:
                 pass
             
-        # Получение списка всех контейнеров
+        # Get list of all containers
         if has_jq:
             output, _ = self.execute_command("""
                 docker ps -a --format '{{json .}}' | jq -s '.'
             """)
         else:
-            # Альтернативный метод без jq
+            # Alternative method without jq
             output, _ = self.execute_command("""
                 echo "["
                 docker ps -a --format '{{json .}}' | sed -e 's/$/,/'
                 echo "{}"
                 echo "]"
             """)
-            # Исправление JSON-формата (убираем лишнюю запятую)
+            # Fix JSON format (remove extra comma)
             if output:
                 output = output.replace(",\n{}\n]", "\n]")
         
@@ -347,20 +347,20 @@ class ServerInfo:
             except json.JSONDecodeError:
                 pass
             
-        # Получение списка образов
+        # Get list of images
         if has_jq:
             output, _ = self.execute_command("""
                 docker images --format '{{json .}}' | jq -s '.'
             """)
         else:
-            # Альтернативный метод без jq
+            # Alternative method without jq
             output, _ = self.execute_command("""
                 echo "["
                 docker images --format '{{json .}}' | sed -e 's/$/,/'
                 echo "{}"
                 echo "]"
             """)
-            # Исправление JSON-формата (убираем лишнюю запятую)
+            # Fix JSON format (remove extra comma)
             if output:
                 output = output.replace(",\n{}\n]", "\n]")
         
@@ -371,7 +371,7 @@ class ServerInfo:
                 pass
     
     def collect_all_info(self):
-        """Сбор всей информации о сервере."""
+        """Collect all server information."""
         if not self.connect():
             return False
             
@@ -384,16 +384,16 @@ class ServerInfo:
             self.disconnect()
     
     def format_bytes(self, size_bytes):
-        """Преобразование байтов в человеко-читаемый формат."""
+        """Convert bytes to human-readable format."""
         if size_bytes == 0 or size_bytes is None:
             return "0B"
         
-        # Преобразуем в число, если передана строка
+        # Convert to number if string is passed
         if isinstance(size_bytes, str):
             try:
                 size_bytes = float(size_bytes)
             except (ValueError, TypeError):
-                return size_bytes  # Возвращаем как есть, если не можем преобразовать
+                return size_bytes  # Return as is if we can't convert
         
         size_names = ("B", "KB", "MB", "GB", "TB", "PB")
         i = 0
@@ -401,16 +401,16 @@ class ServerInfo:
             size_bytes /= 1024
             i += 1
         
-        # Округление до 2 знаков после запятой
+        # Round to 2 decimal places
         return f"{round(size_bytes, 2)}{size_names[i]}"
     
     def get_summary(self):
-        """Получение сводной информации о сервере."""
+        """Get summary information about the server."""
         if not self.is_available:
             return {
                 'hostname': self.hostname,
                 'port': self.port,
-                'status': 'недоступен',
+                'status': 'unavailable',
                 'error': self.error_message,
                 'cpu_usage': 'N/A',
                 'memory_usage': 'N/A',
@@ -437,14 +437,14 @@ class ServerInfo:
         
         docker_info = self.info.get('docker', {}).get('info', {})
         
-        # Форматирование CPU-загрузки
+        # Format CPU usage
         cpu_usage = self.info.get('resources', {}).get('cpu_usage_current', 0)
         if isinstance(cpu_usage, (int, float)):
             cpu_usage_str = f"{cpu_usage:.1f}%"
         else:
             cpu_usage_str = f"{cpu_usage}%"
         
-        # Форматирование Load Average
+        # Format Load Average
         cpu_load_relative = self.info.get('resources', {}).get('cpu_load_relative', {}).get('load_5m_percent', 0)
         if isinstance(cpu_load_relative, (int, float)):
             cpu_load_str = f"{cpu_load_relative:.2f}%"
@@ -454,7 +454,7 @@ class ServerInfo:
         return {
             'hostname': self.hostname,
             'port': self.port,
-            'status': 'доступен',
+            'status': 'available',
             'cpu_usage': cpu_usage_str,
             'cpu_load_1m': self.info.get('resources', {}).get('cpu_load', {}).get('load_1m', 'N/A'),
             'cpu_load_5m': self.info.get('resources', {}).get('cpu_load', {}).get('load_5m', 'N/A'),

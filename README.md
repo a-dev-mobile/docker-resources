@@ -1,99 +1,99 @@
 # Docker Resources
 
-Инструмент для мониторинга ресурсов и контейнеров Docker на удаленных серверах. Позволяет собирать информацию о нескольких серверах одновременно и представлять ее в различных форматах.
+A tool for monitoring Docker resources and containers on remote servers. It allows you to collect information from multiple servers simultaneously and present it in various formats.
 
-## Возможности
+## Features
 
-- Параллельное подключение к серверам
-- Сбор информации о системе, ресурсах и Docker-контейнерах
-- Подробный анализ использования ресурсов каждым контейнером
-- Вывод в различных форматах (текст, JSON, CSV)
-- Сохранение результатов в файл
+- Parallel connection to servers
+- Collection of system, resource, and Docker container information
+- Detailed analysis of resource usage by each container
+- Output in various formats (text, JSON, CSV)
+- Saving results to a file
 
-## Требования
+## Requirements
 
-На локальном компьютере:
-- Python 3.6 или выше
-- Библиотеки: paramiko, prettytable
+On the local computer:
+- Python 3.6 or higher
+- Libraries: paramiko, prettytable
 
-На удаленных серверах:
-- SSH-сервер
+On remote servers:
+- SSH server
 - Docker
-- Желательно (но не обязательно): утилита jq для форматирования JSON
+- Recommended (but not required): jq utility for JSON formatting
 
-## Установка
+## Installation
 
-### Из исходного кода
+### From source code
 
 ```bash
-# Клонирование репозитория
-git clone <url_репозитория>
+# Clone repository
+git clone <repository_url>
 cd docker-resources
 
-# Установка зависимостей
+# Install dependencies
 pip install -r requirements.txt
 
-# Установка пакета (опционально)
+# Install package (optional)
 pip install -e .
 ```
 
-### С помощью pip
+### Using pip
 
 ```bash
 pip install docker-resources
 ```
 
-## Использование
+## Usage
 
-### Подготовка
+### Preparation
 
-Создайте файл `servers.txt` со списком серверов:
+Create a `servers.txt` file with a list of servers:
 
 ```
 user@server1
 user@server2
-user@server3:2222  # Указание нестандартного порта SSH
-admin@server4:2233  # Другой пользователь и порт
+user@server3:2222  # Specifying non-standard SSH port
+admin@server4:2233  # Different user and port
 ```
 
-### Запуск
+### Running
 
 ```bash
-# Базовое использование
+# Basic usage
 python -m docker_resources
 
-# С указанием файла серверов и ключа SSH
+# Specifying servers file and SSH key
 python -m docker_resources -f my_servers.txt -k ~/.ssh/id_rsa
 
-# С указанием формата вывода и имени выходного файла
+# Specifying output format and output filename
 python -m docker_resources --format json -o results.json
 ```
 
-### Параметры командной строки
+### Command-line parameters
 
-- `-f, --file` - путь к файлу со списком серверов (по умолчанию: servers.txt)
-- `-o, --output` - файл для сохранения результатов
-- `-k, --key` - файл приватного ключа SSH
-- `--format` - формат вывода (text, json, csv)
+- `-f, --file` - path to the file with server list (default: servers.txt)
+- `-o, --output` - file to save results
+- `-k, --key` - SSH private key file
+- `--format` - output format (text, json, csv)
 
-## Примеры
+## Examples
 
 ```bash
-# Сохранение отчета в CSV формате
+# Save report in CSV format
 python -m docker_resources --format csv -o servers_report.csv
 
-# Использование с конкретным ключом SSH и выводом в JSON
+# Use with specific SSH key and JSON output
 python -m docker_resources -k ~/.ssh/server_key -f production_servers.txt --format json
 ```
 
-## Советы по Debian
+## Tips for Debian
 
-Если на удаленных серверах не установлена утилита `jq`, скрипт будет использовать альтернативные методы. Однако для лучшей поддержки рекомендуется установить её:
+If the `jq` utility is not installed on remote servers, the script will use alternative methods. However, for better support it is recommended to install it:
 
 ```bash
 apt-get update && apt-get install -y jq
 ```
 
-## Лицензия
+## License
 
 MIT
