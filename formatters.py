@@ -13,7 +13,7 @@ def format_text_output(server_infos, output_file=None):
     """Formatting output in text format."""
     # Create a table for summary
     table = PrettyTable()
-    table.field_names = ["Server", "Port", "Status", "CPU (curr.)", "Load Avg (5m)", "Cores", "Memory", "Disk", "Cont. (act)", "Cont. (total)"]
+    table.field_names = ["Server", "Port", "Status", "CPU (curr.)", "Load Avg (5m)", "Cores", "Memory", "Root Disk", "Cont. (act)", "Cont. (total)"]
     
     # Get summary information about each server
     summaries = [info.get_summary() for info in server_infos]
@@ -52,12 +52,15 @@ def format_text_output(server_infos, output_file=None):
     output += "=" * 80 + "\n"
     
     for info in server_infos:
+        # Include port in server header (normalize the display)
+        server_header = f"### Server: {info.hostname}:{info.port} ###"
+        
         if not info.is_available:
-            output += f"\n\n### Server: {info.hostname} - UNAVAILABLE ###\n"
+            output += f"\n\n{server_header} - UNAVAILABLE\n"
             output += f"Error: {info.error_message}\n"
             continue
             
-        output += f"\n\n### Server: {info.hostname} ###\n"
+        output += f"\n\n{server_header}\n"
         
         # System information
         sys_info = info.info.get('system_info', {})
@@ -96,12 +99,36 @@ def format_text_output(server_infos, output_file=None):
             output += f"  Used: {info.format_bytes(memory.get('used', 0))} ({memory.get('usage_percent', 'N/A')}%)\n"
             output += f"  Free: {info.format_bytes(memory.get('free', 0))}\n"
         
-        disk = resources.get('disk', {})
-        if disk:
-            output += "Disk (/):\n"
-            output += f"  Total: {info.format_bytes(disk.get('total', 0))}\n"
-            output += f"  Used: {info.format_bytes(disk.get('used', 0))} ({disk.get('usage_percent', 'N/A')}%)\n"
-            output += f"  Free: {info.format_bytes(disk.get('free', 0))}\n"
+        # All Disks Information
+        disks = resources.get('disks', {})
+        if disks:
+            output += "\n--- Disk Information ---\n"
+            
+            # Create table for disks
+            disk_table = PrettyTable()
+            disk_table.field_names = ["Mount Point", "Device", "Total", "Used", "Free", "Usage %"]
+            disk_table.align = "l"  # Left alignment
+            
+            # Add all disks to the table
+            for mount_point, disk_info in disks.items():
+                disk_table.add_row([
+                    disk_info.get('mount_point', 'N/A'),
+                    disk_info.get('device', 'N/A'),
+                    info.format_bytes(disk_info.get('total', 0)),
+                    info.format_bytes(disk_info.get('used', 0)),
+                    info.format_bytes(disk_info.get('free', 0)),
+                    f"{disk_info.get('usage_percent', 0):.2f}%"
+                ])
+            
+            output += str(disk_table) + "\n"
+        else:
+            # Legacy format - single disk info
+            disk = resources.get('disk', {})
+            if disk:
+                output += "Disk (/):\n"
+                output += f"  Total: {info.format_bytes(disk.get('total', 0))}\n"
+                output += f"  Used: {info.format_bytes(disk.get('used', 0))} ({disk.get('usage_percent', 'N/A')}%)\n"
+                output += f"  Free: {info.format_bytes(disk.get('free', 0))}\n"
         
         # Docker information (basic)
         docker = info.info.get('docker', {})
@@ -132,10 +159,13 @@ def format_text_output(server_infos, output_file=None):
         docker = info.info.get('docker', {})
         if not docker.get('installed', False):
             continue
+        
+        # Include port in server header
+        server_header = f"### Server: {info.hostname}:{info.port} ###"
             
         containers = docker.get('containers', {}).get('running', [])
         if containers:
-            output += f"\n\n### Server: {info.hostname} ###\n"
+            output += f"\n\n{server_header}\n"
             
             # Create table for containers
             container_table = PrettyTable()
@@ -156,7 +186,7 @@ def format_text_output(server_infos, output_file=None):
             
             output += str(container_table) + "\n"
         else:
-            output += f"\n\n### Server: {info.hostname} ###\n"
+            output += f"\n\n{server_header}\n"
             output += "No running containers\n"
 
     # 4. DOCKER IMAGES SECTION
@@ -171,10 +201,13 @@ def format_text_output(server_infos, output_file=None):
         docker = info.info.get('docker', {})
         if not docker.get('installed', False):
             continue
+        
+        # Include port in server header
+        server_header = f"### Server: {info.hostname}:{info.port} ###"
             
         images = docker.get('images', [])
         if images:
-            output += f"\n\n### Server: {info.hostname} ###\n"
+            output += f"\n\n{server_header}\n"
             
             # Create table for images
             image_table = PrettyTable()
@@ -196,7 +229,7 @@ def format_text_output(server_infos, output_file=None):
             if len(images) > 10:
                 output += f"...and {len(images) - 10} more images...\n"
         else:
-            output += f"\n\n### Server: {info.hostname} ###\n"
+            output += f"\n\n{server_header}\n"
             output += "No Docker images\n"
     
     # Print and save results

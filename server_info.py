@@ -212,20 +212,51 @@ class ServerInfo:
                         'usage_percent': round((used_mem / total_mem) * 100, 2)
                     }
         
-        # Disk information
-        output, _ = self.execute_command("df -B1 / | tail -1")
+        # Get information about all mounted disks
+        output, _ = self.execute_command("df -B1 | grep -v tmpfs | grep -v udev | grep -v loop")
         if output:
-            parts = output.split()
-            if len(parts) >= 6:
-                total_disk = int(parts[1])
-                used_disk = int(parts[2])
-                avail_disk = int(parts[3])
-                self.info['resources']['disk'] = {
-                    'total': total_disk,
-                    'used': used_disk,
-                    'free': avail_disk,
-                    'usage_percent': round((used_disk / total_disk) * 100, 2)
-                }
+            self.info['resources']['disks'] = {}
+            lines = output.strip().split('\n')
+            
+            # Skip header line if present
+            if 'Filesystem' in lines[0]:
+                lines = lines[1:]
+                
+            for line in lines:
+                parts = line.split()
+                if len(parts) >= 6:
+                    device = parts[0]
+                    mount_point = parts[5]
+                    total_disk = int(parts[1])
+                    used_disk = int(parts[2])
+                    avail_disk = int(parts[3])
+                    
+                    # Skip very small or virtual filesystems
+                    if total_disk < 10*1024*1024:  # Skip partitions smaller than 10MB
+                        continue
+                        
+                    # Use mount point as key (clean it for dictionary key)
+                    key = mount_point.replace('/', '_').strip('_')
+                    if not key:
+                        key = 'root'
+                        
+                    self.info['resources']['disks'][key] = {
+                        'device': device,
+                        'mount_point': mount_point,
+                        'total': total_disk,
+                        'used': used_disk,
+                        'free': avail_disk,
+                        'usage_percent': round((used_disk / total_disk) * 100, 2) if total_disk > 0 else 0
+                    }
+            
+            # Also store root disk info in the old location for backwards compatibility
+            if 'root' in self.info['resources']['disks']:
+                self.info['resources']['disk'] = self.info['resources']['disks']['root']
+            else:
+                # If no root disk found, use the first disk
+                if self.info['resources']['disks']:
+                    first_key = next(iter(self.info['resources']['disks']))
+                    self.info['resources']['disk'] = self.info['resources']['disks'][first_key]
     
     def collect_docker_info(self):
         """Collect information about Docker and containers."""
@@ -427,6 +458,7 @@ class ServerInfo:
         else:
             memory_percent = f"{memory_percent}%"
         
+        # Get root disk or first available disk for summary
         disk = self.info.get('resources', {}).get('disk', {})
         disk_usage = f"{self.format_bytes(disk.get('used', 0))}/{self.format_bytes(disk.get('total', 0))}"
         disk_percent = disk.get('usage_percent', 0)
