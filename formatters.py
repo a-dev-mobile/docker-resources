@@ -52,8 +52,14 @@ def format_text_output(server_infos, output_file=None):
     output += "=" * 80 + "\n"
     
     for info in server_infos:
-        # Include port in server header (normalize the display)
-        server_header = f"### Server: {info.hostname}:{info.port} ###"
+        # Get the actual hostname from system_info if available, otherwise use IP
+        system_hostname = info.info.get('system_info', {}).get('hostname', 'N/A')
+        
+        # Include hostname, IP and port in server header
+        if system_hostname and system_hostname != 'N/A':
+            server_header = f"### Server: {system_hostname} ({info.hostname}:{info.port}) ###"
+        else:
+            server_header = f"### Server: {info.hostname}:{info.port} ###"
         
         if not info.is_available:
             output += f"\n\n{server_header} - UNAVAILABLE\n"
@@ -65,6 +71,7 @@ def format_text_output(server_infos, output_file=None):
         # System information
         sys_info = info.info.get('system_info', {})
         output += "\n--- System Information ---\n"
+        output += f"Hostname: {sys_info.get('hostname', 'N/A')}\n"
         output += f"OS: {sys_info.get('os', 'N/A')}\n"
         output += f"Kernel: {sys_info.get('kernel', 'N/A')}\n"
         output += f"Uptime: {sys_info.get('uptime', 'N/A')}\n"
@@ -160,8 +167,14 @@ def format_text_output(server_infos, output_file=None):
         if not docker.get('installed', False):
             continue
         
-        # Include port in server header
-        server_header = f"### Server: {info.hostname}:{info.port} ###"
+        # Get the actual hostname from system_info if available, otherwise use IP
+        system_hostname = info.info.get('system_info', {}).get('hostname', 'N/A')
+        
+        # Include hostname, IP and port in server header
+        if system_hostname and system_hostname != 'N/A':
+            server_header = f"### Server: {system_hostname} ({info.hostname}:{info.port}) ###"
+        else:
+            server_header = f"### Server: {info.hostname}:{info.port} ###"
             
         containers = docker.get('containers', {}).get('running', [])
         if containers:
@@ -202,8 +215,14 @@ def format_text_output(server_infos, output_file=None):
         if not docker.get('installed', False):
             continue
         
-        # Include port in server header
-        server_header = f"### Server: {info.hostname}:{info.port} ###"
+        # Get the actual hostname from system_info if available, otherwise use IP
+        system_hostname = info.info.get('system_info', {}).get('hostname', 'N/A')
+        
+        # Include hostname, IP and port in server header
+        if system_hostname and system_hostname != 'N/A':
+            server_header = f"### Server: {system_hostname} ({info.hostname}:{info.port}) ###"
+        else:
+            server_header = f"### Server: {info.hostname}:{info.port} ###"
             
         images = docker.get('images', [])
         if images:
